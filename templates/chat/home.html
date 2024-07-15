@@ -16,9 +16,93 @@
                 </div>
 
                 <ul class="list-room list-group shadow border-0">
-                 
-                    {% include 'chat/list-room.html' %}
                     
+                
+                    {% for room in rooms %}
+                        <li class="list-group-item" id="room-{{room.id}}" onclick="getMessages('{{room.id}}')">{{room.title}}</li>
+                        {% comment %} <li role="button" class="list-group-item" id="room-{{r.id}}" onclick="getMessages('{{r.id}}')">{{r.title}}</li> {% endcomment %}
+                    {% endfor %}
+                    {% block js %}
+                    <script>
+                        const Qs = (el) => document.querySelector(el);
+                        const QsAll = (el) => document.querySelectorAll(el);
+
+                        const $chatMessages = Qs(".messages");
+                        const buton = document.querySelector(".testeteste");
+
+                        const setRoomActive = (room_id) => {
+                        QsAll(".list-rooms li").forEach((el) => el.classList.remove("active"));
+                        Qs(`#room-${room_id}`).classList.add("active");
+                        Qs("#selected-room").value = room_id;
+                        };
+
+                        const getMessages = async (room_id) => {
+                        const response = await fetch(`/${room_id}`);
+                        const html = await response.text();
+                        $chatMessages.innerHTML = html;
+                        setRoomActive(room_id);
+                        };
+
+                        const sendMessage = async (data) => {
+                        console.log(data);
+
+                        const response = await fetch(`/${data.room_id}/send`, {
+                            method: "POST",
+                            headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": data.csrfmiddlewaretoken,
+                            },
+                            body: JSON.stringify(data),
+                        });
+                        const html = await response.text();
+                        const $uniqueMessageContainer = Qs(".unique-message-container");
+                        $uniqueMessageContainer.insertAdjacentHTML("beforeend", html);
+                        Qs(".send-message").reset();
+                        };
+
+                        const createRoom = async (data) => {
+                        const response = await fetch(`/create-room`, {
+                            method: "POST",
+                            headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": data.csrfmiddlewaretoken,
+                            },
+                            body: JSON.stringify(data),
+                        });
+                        const html = await response.text();
+                        const $listRooms = Qs(".list-rooms");
+                        $listRooms.insertAdjacentHTML("afterbegin", html);
+                        const modal = bootstrap.Modal.getInstance(Qs(".modal"));
+                        modal.hide();
+                        Qs(".create-room").reset();
+                        getLastRoom();
+                        };
+
+                        const getLastRoom = () => {
+                        Qs(".list-rooms li").click();
+                        };
+
+                        //// EVENTS
+
+                        // intercept form send message
+                        Qs(".send-message").addEventListener("submit", (e) => {
+                        e.preventDefault();
+                        const data = Object.fromEntries(new FormData(e.target).entries());
+                        sendMessage(data);
+                        });
+
+                        // intercept form create room
+                        Qs(".create-room").addEventListener("submit", (e) => {
+                        e.preventDefault();
+                        const data = Object.fromEntries(new FormData(e.target).entries());
+                        createRoom(data);
+                        });
+
+                        // INIT
+                        getLastRoom();
+
+                    </script>
+                    {% endblock %}
                 </ul>
             </div>
         </div>
@@ -39,8 +123,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
     </script>
-{% endblock %}
-
-{% block js %}
-    <script defer src="{% static 'js/chatus.js' %}"></script>
 {% endblock %}
